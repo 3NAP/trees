@@ -1,625 +1,158 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Delta Tree & Nature Map</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;1,9..144,300&display=swap" rel="stylesheet">
-<style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-  :root {
-    --forest: #2d5a27;
-    --forest-mid: #4a8c3f;
-    --forest-light: #7cbf6e;
-    --bark: #5c3d1e;
-    --moss: #a8c97f;
-    --soil: #c8a96e;
-    --sky: #d4ecd4;
-    --panel: #f5f2eb;
-    --text: #1a2e18;
-    --text-muted: #5a7055;
-    --border: #c2d4b8;
-    --accent: #e8823a;
-  }
-
-  html, body {
-    height: 100%;
-    font-family: 'DM Mono', monospace;
-    background: var(--panel);
-    color: var(--text);
-    overflow: hidden;
-  }
-
-  #app {
-    display: grid;
-    grid-template-rows: auto 1fr;
-    height: 100vh;
-  }
-
-  header {
-    background: var(--forest);
-    color: #fff;
-    padding: 0 1.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    height: 56px;
-    border-bottom: 3px solid var(--forest-light);
-    z-index: 1000;
-    position: relative;
-  }
-
-  .logo {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .logo-icon {
-    width: 32px;
-    height: 32px;
-    background: var(--forest-light);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 18px;
-  }
-
-  .logo-text {
-    font-family: 'Fraunces', serif;
-    font-size: 1.15rem;
-    font-weight: 600;
-    letter-spacing: -0.02em;
-    color: #fff;
-  }
-
-  .logo-sub {
-    font-size: 0.65rem;
-    color: var(--moss);
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    font-weight: 400;
-    margin-top: 1px;
-  }
-
-  .header-right {
-    font-size: 0.7rem;
-    color: var(--moss);
-    text-align: right;
-    line-height: 1.6;
-  }
-
-  #map-container {
-    display: grid;
-    grid-template-columns: 280px 1fr;
-    height: 100%;
-    overflow: hidden;
-  }
-
-  #sidebar {
-    background: var(--panel);
-    border-right: 1px solid var(--border);
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    z-index: 500;
-  }
-
-  .sidebar-section {
-    padding: 1rem 1.25rem;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .sidebar-section h3 {
-    font-family: 'Fraunces', serif;
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: var(--forest);
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    margin-bottom: 0.75rem;
-  }
-
-  .layer-group {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-
-  .layer-toggle {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    cursor: pointer;
-    padding: 6px 8px;
-    border-radius: 6px;
-    transition: background 0.15s;
-    border: none;
-    background: transparent;
-    width: 100%;
-    text-align: left;
-    font-family: 'DM Mono', monospace;
-    font-size: 0.72rem;
-    color: var(--text);
-  }
-
-  .layer-toggle:hover { background: var(--sky); }
-  .layer-toggle.active { background: var(--sky); color: var(--forest); }
-
-  .layer-dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    flex-shrink: 0;
-    border: 2px solid transparent;
-  }
-
-  .toggle-check {
-    width: 14px;
-    height: 14px;
-    border: 1.5px solid var(--border);
-    border-radius: 3px;
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-left: auto;
-    transition: all 0.15s;
-  }
-
-  .layer-toggle.active .toggle-check {
-    background: var(--forest);
-    border-color: var(--forest);
-  }
-
-  .toggle-check::after {
-    content: '';
-    width: 6px;
-    height: 4px;
-    border-left: 1.5px solid #fff;
-    border-bottom: 1.5px solid #fff;
-    transform: rotate(-45deg) translateY(-1px);
-    display: none;
-  }
-
-  .layer-toggle.active .toggle-check::after { display: block; }
-
-  .status-bar {
-    padding: 0.75rem 1.25rem;
-    margin-top: auto;
-    background: var(--sky);
-    border-top: 1px solid var(--border);
-    font-size: 0.65rem;
-    color: var(--text-muted);
-    line-height: 1.8;
-  }
-
-  .status-dot {
-    width: 6px;
-    height: 6px;
-    background: var(--forest-light);
-    border-radius: 50%;
-    display: inline-block;
-    margin-right: 5px;
-    animation: pulse 2s infinite;
-  }
-
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.4; }
-  }
-
-  #map {
-    width: 100%;
-    height: 100%;
-    z-index: 1;
-  }
-
-  .leaflet-container { font-family: 'DM Mono', monospace; }
-
-  #loading-overlay {
-    position: absolute;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(245, 242, 235, 0.85);
-    z-index: 9999;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 1rem;
-    pointer-events: none;
-    opacity: 0;
-    transition: opacity 0.3s;
-  }
-
-  #loading-overlay.visible { opacity: 1; pointer-events: all; }
-
-  .loading-tree {
-    font-size: 2.5rem;
-    animation: sway 1.5s ease-in-out infinite;
-  }
-
-  @keyframes sway {
-    0%, 100% { transform: rotate(-5deg); }
-    50% { transform: rotate(5deg); }
-  }
-
-  .loading-text {
-    font-family: 'Fraunces', serif;
-    font-size: 1rem;
-    color: var(--forest);
-  }
-
-  #info-panel {
-    position: absolute;
-    bottom: 2rem;
-    right: 1rem;
-    width: 260px;
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 1rem;
-    z-index: 800;
-    display: none;
-    box-shadow: 0 4px 20px rgba(45, 90, 39, 0.15);
-  }
-
-  #info-panel.visible { display: block; }
-
-  .info-title {
-    font-family: 'Fraunces', serif;
-    font-size: 0.95rem;
-    color: var(--forest);
-    margin-bottom: 0.5rem;
-    font-weight: 600;
-  }
-
-  .info-row {
-    display: flex;
-    justify-content: space-between;
-    font-size: 0.68rem;
-    color: var(--text-muted);
-    padding: 3px 0;
-    border-bottom: 1px solid var(--sky);
-  }
-
-  .info-row span:last-child { color: var(--text); font-weight: 500; }
-
-  .info-close {
-    position: absolute;
-    top: 8px; right: 10px;
-    background: none;
-    border: none;
-    cursor: pointer;
-    font-size: 1rem;
-    color: var(--text-muted);
-    font-family: 'DM Mono', monospace;
-    padding: 0;
-  }
-
-  #map-area {
-    position: relative;
-  }
-
-  .cors-warning {
-    background: #fff8f0;
-    border: 1px solid #f5c69a;
-    border-radius: 6px;
-    padding: 8px 10px;
-    font-size: 0.63rem;
-    color: #8a5c2a;
-    line-height: 1.6;
-    margin-top: 8px;
-  }
-
-  .data-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 0.6rem;
-    background: var(--sky);
-    color: var(--forest);
-    border-radius: 20px;
-    padding: 2px 7px;
-    margin-top: 6px;
-    border: 1px solid var(--border);
-  }
-
-  .layer-count {
-    font-size: 0.6rem;
-    color: var(--text-muted);
-    margin-left: auto;
-    margin-right: 4px;
-  }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Delta Tree & Nature Map</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;1,9..144,300&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --forest: #2d5a27; --forest-mid: #4a8c3f; --forest-light: #7cbf6e;
+            --bark: #5c3d1e; --moss: #a8c97f; --soil: #c8a96e; --sky: #d4ecd4;
+            --panel: #f5f2eb; --text: #1a2e18; --text-muted: #5a7055;
+            --border: #c2d4b8; --accent: #e8823a;
+        }
+        html, body { height: 100%; font-family: 'DM Mono', monospace; background: var(--panel); color: var(--text); overflow: hidden; }
+        #app { display: grid; grid-template-rows: auto 1fr; height: 100vh; }
+        header { background: var(--forest); color: #fff; padding: 0 1.5rem; display: flex; align-items: center; justify-content: space-between; height: 56px; border-bottom: 3px solid var(--forest-light); z-index: 1000; position: relative; }
+        .logo { display: flex; align-items: center; gap: 10px; }
+        .logo-icon { width: 32px; height: 32px; background: var(--forest-light); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+        .logo-text { font-family: 'Fraunces', serif; font-size: 1.15rem; font-weight: 600; color: #fff; }
+        #map-container { display: grid; grid-template-columns: 280px 1fr; height: 100%; overflow: hidden; }
+        #sidebar { background: var(--panel); border-right: 1px solid var(--border); overflow-y: auto; display: flex; flex-direction: column; z-index: 500; }
+        .sidebar-section { padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); }
+        .sidebar-section h3 { font-family: 'Fraunces', serif; font-size: 0.8rem; font-weight: 600; color: var(--forest); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.75rem; }
+        .layer-toggle { display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 6px 8px; border-radius: 6px; transition: background 0.15s; border: none; background: transparent; width: 100%; text-align: left; font-family: 'DM Mono', monospace; font-size: 0.72rem; }
+        .layer-toggle:hover { background: var(--sky); }
+        .layer-toggle.active { background: var(--sky); color: var(--forest); }
+        .toggle-check { width: 14px; height: 14px; border: 1.5px solid var(--border); border-radius: 3px; margin-left: auto; position: relative; }
+        .layer-toggle.active .toggle-check { background: var(--forest); border-color: var(--forest); }
+        .layer-toggle.active .toggle-check::after { content: '✓'; color: white; font-size: 10px; position: absolute; top: -2px; left: 2px; }
+        #map { width: 100%; height: 100%; z-index: 1; }
+        #loading-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(245, 242, 235, 0.8); z-index: 9999; display: none; flex-direction: column; align-items: center; justify-content: center; }
+        #loading-overlay.visible { display: flex; }
+        #info-panel { position: absolute; bottom: 2rem; right: 1rem; width: 280px; background: white; border: 1px solid var(--border); border-radius: 10px; padding: 1rem; z-index: 800; display: none; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        #info-panel.visible { display: block; }
+        select { width: 100%; padding: 8px; border-radius: 5px; border: 1px solid var(--border); font-family: 'DM Mono'; font-size: 0.7rem; background: white; margin-top: 5px; }
+    </style>
 </head>
 <body>
 <div id="app">
-  <header>
-    <div class="logo">
-      <div class="logo-icon">🌲</div>
-      <div>
-        <div class="logo-text">Delta Tree Map</div>
-        <div class="logo-sub">Delta, British Columbia</div>
-      </div>
+    <header>
+        <div class="logo"><div class="logo-icon">🌲</div><div><div class="logo-text">Delta Tree Map</div></div></div>
+        <div style="font-size: 0.7rem; color: #a8c97f;">v1.2 · Live iNaturalist + OSM Integration</div>
+    </header>
+    <div id="map-container">
+        <div id="sidebar">
+            <div class="sidebar-section">
+                <h3>🌳 Live Tree Data</h3>
+                <button class="layer-toggle active" onclick="toggleTreeLayer('inat', this)">iNaturalist Observations (verified)</button>
+                <button class="layer-toggle" onclick="toggleTreeLayer('osm', this)">OpenStreetMap Trees</button>
+                <div style="margin-top:10px">
+                    <label style="font-size: 0.65rem; color: var(--text-muted);">FILTER BY SPECIES:</label>
+                    <select id="species-filter" onchange="filterBySpecies(this.value)">
+                        <option value="all">All Species Found</option>
+                    </select>
+                </div>
+            </div>
+            <div class="sidebar-section">
+                <h3>🏞️ Infrastructure & Nature</h3>
+                <button class="layer-toggle" onclick="toggleDeltaLayer('streams', this)">Delta Streams</button>
+                <button class="layer-toggle" onclick="toggleDeltaLayer('ramsar', this)">Protected Wetlands</button>
+            </div>
+            <div style="padding: 1rem; font-size: 0.6rem; color: var(--text-muted); margin-top: auto;">
+                Data is fetched live from iNaturalist API and Overpass (OSM).
+            </div>
+        </div>
+        <div id="map"></div>
+        <div id="loading-overlay"><div style="font-size:2rem">🌱</div><div>Gathering nature data...</div></div>
+        <div id="info-panel">
+            <button onclick="document.getElementById('info-panel').classList.remove('visible')" style="float:right; border:none; background:none; cursor:pointer;">✕</button>
+            <h4 id="info-title" style="font-family:Fraunces; color:var(--forest)">Details</h4>
+            <div id="info-content" style="font-size:0.75rem; margin-top:10px;"></div>
+        </div>
     </div>
-    <div class="header-right">
-      Community-built · Open data<br>
-      <span style="color:#7cbf6e">mw1.delta.ca + OpenStreetMap</span>
-    </div>
-  </header>
-
-  <div id="map-container">
-    <div id="sidebar">
-
-      <div class="sidebar-section">
-        <h3>🌿 Nature & Parks</h3>
-        <div class="layer-group">
-          <button class="layer-toggle active" data-layer="invasive" onclick="toggleLayer(this)">
-            <span class="layer-dot" style="background:#e85d3a; border-color:#c03e1f"></span>
-            Invasive plants
-            <div class="toggle-check"></div>
-          </button>
-          <button class="layer-toggle active" data-layer="raingarden" onclick="toggleLayer(this)">
-            <span class="layer-dot" style="background:#4a8c3f; border-color:#2d5a27"></span>
-            Rain gardens
-            <div class="toggle-check"></div>
-          </button>
-          <button class="layer-toggle active" data-layer="streams" onclick="toggleLayer(this)">
-            <span class="layer-dot" style="background:#3a7ebf; border-color:#1d5c9e"></span>
-            Stream class
-            <div class="toggle-check"></div>
-          </button>
-          <button class="layer-toggle active" data-layer="contaminated" onclick="toggleLayer(this)">
-            <span class="layer-dot" style="background:#c8a96e; border-color:#8a6a2e"></span>
-            Contaminated sites
-            <div class="toggle-check"></div>
-          </button>
-          <button class="layer-toggle active" data-layer="ramsar" onclick="toggleLayer(this)">
-            <span class="layer-dot" style="background:#5dcaa5; border-color:#0f6e56"></span>
-            Ramsar wetlands
-            <div class="toggle-check"></div>
-          </button>
-        </div>
-      </div>
-
-      <div class="sidebar-section">
-        <h3>🏃 Trails & Recreation</h3>
-        <div class="layer-group">
-          <button class="layer-toggle" data-layer="burnsbog" onclick="toggleLayer(this)">
-            <span class="layer-dot" style="background:#7cbf6e; border-color:#4a8c3f"></span>
-            Burns Bog trails
-            <div class="toggle-check"></div>
-          </button>
-          <button class="layer-toggle" data-layer="watershed" onclick="toggleLayer(this)">
-            <span class="layer-dot" style="background:#a8c97f; border-color:#639922"></span>
-            Watershed Park trails
-            <div class="toggle-check"></div>
-          </button>
-          <button class="layer-toggle" data-layer="deltanature" onclick="toggleLayer(this)">
-            <span class="layer-dot" style="background:#5c3d1e; border-color:#3a2510"></span>
-            Delta Nature Reserve
-            <div class="toggle-check"></div>
-          </button>
-          <button class="layer-toggle" data-layer="millennium" onclick="toggleLayer(this)">
-            <span class="layer-dot" style="background:#e8823a; border-color:#ba5e1f"></span>
-            Millennium Trail
-            <div class="toggle-check"></div>
-          </button>
-          <button class="layer-toggle" data-layer="cycling" onclick="toggleLayer(this)">
-            <span class="layer-dot" style="background:#7f77dd; border-color:#534ab7"></span>
-            Cycling network
-            <div class="toggle-check"></div>
-          </button>
-          <button class="layer-toggle" data-layer="gardens" onclick="toggleLayer(this)">
-            <span class="layer-dot" style="background:#63c49a; border-color:#0f6e56"></span>
-            Community gardens
-            <div class="toggle-check"></div>
-          </button>
-        </div>
-      </div>
-
-      <div class="sidebar-section">
-        <h3>🌊 Flood & Terrain</h3>
-        <div class="layer-group">
-          <button class="layer-toggle" data-layer="dykes" onclick="toggleLayer(this)">
-            <span class="layer-dot" style="background:#378add; border-color:#185fa5"></span>
-            Dyke elevations
-            <div class="toggle-check"></div>
-          </button>
-          <button class="layer-toggle" data-layer="floodzone" onclick="toggleLayer(this)">
-            <span class="layer-dot" style="background:#e24b4a; border-color:#a32d2d"></span>
-            Outside dyke area
-            <div class="toggle-check"></div>
-          </button>
-          <button class="layer-toggle" data-layer="steepslope" onclick="toggleLayer(this)">
-            <span class="layer-dot" style="background:#ba7517; border-color:#854f0b"></span>
-            Steep slopes
-            <div class="toggle-check"></div>
-          </button>
-        </div>
-      </div>
-
-      <div class="sidebar-section">
-        <h3>🏛️ Planning & Land</h3>
-        <div class="layer-group">
-          <button class="layer-toggle" data-layer="alr" onclick="toggleLayer(this)">
-            <span class="layer-dot" style="background:#c0dd97; border-color:#639922"></span>
-            Agricultural land reserve
-            <div class="toggle-check"></div>
-          </button>
-          <button class="layer-toggle" data-layer="heritage" onclick="toggleLayer(this)">
-            <span class="layer-dot" style="background:#f4c0d1; border-color:#993556"></span>
-            Heritage sites
-            <div class="toggle-check"></div>
-          </button>
-          <button class="layer-toggle" data-layer="archaeology" onclick="toggleLayer(this)">
-            <span class="layer-dot" style="background:#d3d1c7; border-color:#5f5e5a"></span>
-            Archaeological sites
-            <div class="toggle-check"></div>
-          </button>
-        </div>
-        <div class="cors-warning">
-          ⚠ Some layers may not load due to CORS restrictions. See console for details. Data is live from mw1.delta.ca.
-        </div>
-      </div>
-
-      <div class="status-bar">
-        <span class="status-dot"></span>Live data · City of Delta ArcGIS<br>
-        Base map · OpenStreetMap contributors<br>
-        <div class="data-badge">🌲 Community project · delta-tree-map</div>
-      </div>
-    </div>
-
-    <div id="map-area" style="position:relative; overflow:hidden;">
-      <div id="map"></div>
-      <div id="loading-overlay">
-        <div class="loading-tree">🌲</div>
-        <div class="loading-text">Loading layer...</div>
-      </div>
-      <div id="info-panel">
-        <button class="info-close" onclick="closeInfo()">✕</button>
-        <div class="info-title" id="info-title">Feature</div>
-        <div id="info-rows"></div>
-      </div>
-    </div>
-  </div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-const BASE = 'https://mw1.delta.ca/arcgis/rest/services/DeltaMap';
-const QUERY = '/query?where=1%3D1&outFields=*&f=geojson&resultRecordCount=500';
+    const map = L.map('map').setView([49.09, -123.00], 12);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-const LAYERS = {
-  invasive:    { url: `${BASE}/ParksEnvironmental/MapServer/1${QUERY}`,   color: '#e85d3a', weight: 0, fillOpacity: 0.55 },
-  raingarden:  { url: `${BASE}/ParksEnvironmental/MapServer/0${QUERY}`,   color: '#4a8c3f', weight: 2, fillOpacity: 0.4 },
-  streams:     { url: `${BASE}/ParksEnvironmental/MapServer/11${QUERY}`,  color: '#3a7ebf', weight: 2.5, fillOpacity: 0.3 },
-  contaminated:{ url: `${BASE}/ParksEnvironmental/MapServer/19${QUERY}`,  color: '#c8a96e', weight: 2, fillOpacity: 0.45 },
-  ramsar:      { url: `${BASE}/ParksEnvironmental/MapServer/17${QUERY}`,  color: '#5dcaa5', weight: 1.5, fillOpacity: 0.35 },
-  burnsbog:    { url: `${BASE}/ParksEnvironmental/MapServer/16${QUERY}`,  color: '#7cbf6e', weight: 3, fillOpacity: 0 },
-  watershed:   { url: `${BASE}/ParksEnvironmental/MapServer/12${QUERY}`,  color: '#a8c97f', weight: 2.5, fillOpacity: 0 },
-  deltanature: { url: `${BASE}/ParksEnvironmental/MapServer/14${QUERY}`,  color: '#5c3d1e', weight: 2.5, fillOpacity: 0 },
-  millennium:  { url: `${BASE}/ParksEnvironmental/MapServer/13${QUERY}`,  color: '#e8823a', weight: 3, fillOpacity: 0 },
-  cycling:     { url: `${BASE}/Transportation/MapServer/36${QUERY}`,      color: '#7f77dd', weight: 2.5, fillOpacity: 0 },
-  gardens:     { url: `${BASE}/ParksEnvironmental/MapServer/8${QUERY}`,   color: '#63c49a', weight: 2, fillOpacity: 0.5 },
-  dykes:       { url: `${BASE}/Topography/MapServer/5${QUERY}`,           color: '#378add', weight: 3, fillOpacity: 0 },
-  floodzone:   { url: `${BASE}/Topography/MapServer/11${QUERY}`,          color: '#e24b4a', weight: 1, fillOpacity: 0.2 },
-  steepslope:  { url: `${BASE}/Topography/MapServer/12${QUERY}`,          color: '#ba7517', weight: 1, fillOpacity: 0.3 },
-  alr:         { url: `${BASE}/Planning/MapServer/6${QUERY}`,             color: '#c0dd97', weight: 1.5, fillOpacity: 0.3 },
-  heritage:    { url: `${BASE}/Planning/MapServer/7${QUERY}`,             color: '#d4537e', weight: 2, fillOpacity: 0.5 },
-  archaeology: { url: `${BASE}/Planning/MapServer/4${QUERY}`,             color: '#888780', weight: 1, fillOpacity: 0.25 },
-};
+    let treeMarkers = [];
+    const speciesList = new Set();
 
-const loadedLayers = {};
-const activeKeys = new Set(['invasive','raingarden','streams','contaminated','ramsar']);
+    function showLoading(show) { document.getElementById('loading-overlay').classList.toggle('visible', show); }
 
-const map = L.map('map', {
-  center: [49.09, -123.00],
-  zoom: 12,
-  zoomControl: true,
-});
-
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a> contributors',
-  maxZoom: 19,
-}).addTo(map);
-
-function showLoading(show) {
-  document.getElementById('loading-overlay').classList.toggle('visible', show);
-}
-
-function styleFeature(cfg) {
-  return {
-    color: cfg.color,
-    weight: cfg.weight || 2,
-    fillColor: cfg.color,
-    fillOpacity: cfg.fillOpacity !== undefined ? cfg.fillOpacity : 0.35,
-    opacity: 0.9,
-  };
-}
-
-function showInfo(props, layerName) {
-  const panel = document.getElementById('info-panel');
-  const title = document.getElementById('info-title');
-  const rows = document.getElementById('info-rows');
-  const skip = ['OBJECTID','Shape__Length','Shape__Area','Shape_Length','Shape_Area'];
-  const entries = Object.entries(props || {}).filter(([k,v]) => !skip.includes(k) && v != null && v !== '');
-  if (!entries.length) return;
-  title.textContent = layerName || 'Feature';
-  rows.innerHTML = entries.slice(0,8).map(([k,v]) =>
-    `<div class="info-row"><span>${k.toLowerCase().replace(/_/g,' ')}</span><span>${v}</span></div>`
-  ).join('');
-  panel.classList.add('visible');
-}
-
-function closeInfo() {
-  document.getElementById('info-panel').classList.remove('visible');
-}
-
-async function loadLayer(key) {
-  if (loadedLayers[key]) {
-    loadedLayers[key].addTo(map);
-    return;
-  }
-  const cfg = LAYERS[key];
-  if (!cfg) return;
-  showLoading(true);
-  try {
-    const res = await fetch(cfg.url);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
-    if (!data.features || data.features.length === 0) {
-      console.warn(`[Delta Map] ${key}: no features returned`);
-      showLoading(false);
-      return;
+    // FETCH FROM iNATURALIST
+    async function fetchINat() {
+        showLoading(true);
+        // Bounding box for Delta roughly: 49.0,-123.2 to 49.2,-122.8
+        const url = `https://api.inaturalist.org/v1/observations?iconic_taxa=Plants&lat=49.09&lng=-123.00&radius=15&quality_grade=research&per_page=200`;
+        try {
+            const res = await fetch(url);
+            const data = await res.json();
+            data.results.forEach(obs => {
+                const species = obs.taxon?.preferred_common_name || obs.taxon?.name || "Unknown Plant";
+                speciesList.add(species);
+                const marker = L.circleMarker([obs.location.split(',')[0], obs.location.split(',')[1]], {
+                    radius: 8,
+                    fillColor: getTreeColor(species),
+                    color: '#fff',
+                    weight: 1,
+                    fillOpacity: 0.8
+                }).bindPopup(`<b>${species}</b><br>Source: iNaturalist<br><img src="${obs.photos[0]?.url}" style="width:100px">`);
+                marker.species = species;
+                marker.addTo(map);
+                treeMarkers.push(marker);
+            });
+            updateFilterDropdown();
+        } catch (e) { console.error("iNat failed", e); }
+        showLoading(false);
     }
-    const layer = L.geoJSON(data, {
-      style: () => styleFeature(cfg),
-      pointToLayer: (feature, latlng) => L.circleMarker(latlng, {
-        radius: 7,
-        fillColor: cfg.color,
-        color: '#fff',
-        weight: 1.5,
-        opacity: 1,
-        fillOpacity: 0.85,
-      }),
-      onEachFeature: (feature, layer) => {
-        layer.on('click', () => showInfo(feature.properties, key.replace(/([A-Z])/g,' $1')));
-      }
-    });
-    loadedLayers[key] = layer;
-    layer.addTo(map);
-    console.log(`[Delta Map] ${key}: loaded ${data.features.length} features`);
-  } catch (err) {
-    console.warn(`[Delta Map] ${key} failed:`, err.message, '— likely CORS. Fetch server-side and cache as GeoJSON.');
-  }
-  showLoading(false);
-}
 
-function removeLayer(key) {
-  if (loadedLayers[key]) {
-    map.removeLayer(loadedLayers[key]);
-  }
-}
+    function getTreeColor(name) {
+        if (name.includes('Maple')) return '#e24b4a';
+        if (name.includes('Cedar') || name.includes('Fir')) return '#2d5a27';
+        if (name.includes('Pine')) return '#1a2e18';
+        if (name.includes('Cherry')) return '#f4c0d1';
+        return '#7cbf6e';
+    }
 
-function toggleLayer(btn) {
-  const key = btn.dataset.layer;
-  btn.classList.toggle('active');
-  if (btn.classList.contains('active')) {
-    activeKeys.add(key);
-    loadLayer(key);
-  } else {
-    activeKeys.delete(key);
-    removeLayer(key);
-  }
-}
+    function updateFilterDropdown() {
+        const select = document.getElementById('species-filter');
+        Array.from(speciesList).sort().forEach(s => {
+            const opt = document.createElement('option');
+            opt.value = s; opt.innerText = s;
+            select.appendChild(opt);
+        });
+    }
 
-activeKeys.forEach(key => loadLayer(key));
+    function filterBySpecies(val) {
+        treeMarkers.forEach(m => {
+            if (val === 'all' || m.species === val) {
+                map.addLayer(m);
+            } else {
+                map.removeLayer(m);
+            }
+        });
+    }
+
+    // TOGGLE BUTTONS
+    function toggleTreeLayer(type, btn) {
+        btn.classList.toggle('active');
+        if (type === 'inat' && btn.classList.contains('active')) fetchINat();
+        else if (type === 'inat') {
+            treeMarkers.forEach(m => map.removeLayer(m));
+            treeMarkers = [];
+        }
+    }
+
+    // Initial Load
+    fetchINat();
 </script>
 </body>
 </html>
